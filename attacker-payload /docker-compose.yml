@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # This container simulates a private npm registry.
+  # We will publish our private package to this registry.
+  verdaccio:
+    image: verdaccio/verdaccio:5.22.1
+    container_name: verdaccio
+    ports:
+      - "4873:4873"
+    volumes:
+      - ./verdaccio-storage:/verdaccio/storage
+    environment:
+      - VERDACCIO_PORT=4873
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4873"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # This is the vulnerable application's build container.
+  # It will run the build process and fall victim to the attack.
+  vulnerable-builder:
+    build:
+      context: ./victim-app
+      dockerfile: Dockerfile
+    container_name: vulnerable-builder
+    depends_on:
+      verdaccio:
+        condition: service_healthy
+    # A simple command to show the build logs
+    command: ["tail", "-f", "/dev/null"]

