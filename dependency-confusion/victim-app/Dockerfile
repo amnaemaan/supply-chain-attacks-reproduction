@@ -4,6 +4,9 @@ FROM node:18-alpine
 # Set the working directory
 WORKDIR /app
 
+# point npm inside the build to Verdaccio (compose service name resolution)
+RUN npm set registry http://verdaccio:4873/
+
 # Copy package.json and package-lock.json
 COPY package.json .
 
