@@ -18,45 +18,34 @@ services:
       retries: 5
 
   # Publisher service: publishes attacker package into Verdaccio automatically on startup.
-  # It mounts ./attacker-payload and runs `npm publish` into Verdaccio.
   publisher:
     image: node:18-alpine
     container_name: publisher
     working_dir: /attacker
-    # mount the attacker package directory (read-only)
     volumes:
       - ./attacker-payload:/attacker:ro
     depends_on:
       - verdaccio
     entrypoint: ["/bin/sh", "-c"]
     command: >
-      "set -e
-       # ensure curl is available (alpine): install quietly if needed
-       apk add --no-cache curl >/dev/null 2>&1 || true
-       echo 'Waiting for Verdaccio to be ready...'
-       # wait until Verdaccio responds to /-/ping
-       until curl -sS http://verdaccio:4873/-/ping >/dev/null 2>&1; do sleep 1; done
-       echo 'Verdaccio is up — publishing attacker package...'
-       npm set registry http://verdaccio:4873/
-       echo 'registry=http://verdaccio:4873/' > ~/.npmrc
-       cd /attacker
-       # publish; ignore failure if already published
-       npm publish --registry http://verdaccio:4873/ || true
-       echo 'publish finished'
-       # allow a short window to inspect logs, then exit
-       sleep 2"
+      apk add --no-cache curl >/dev/null 2>&1 || true
+      echo "Waiting for Verdaccio to be ready..."
+      until curl -sS http://verdaccio:4873/-/ping >/dev/null 2>&1; do sleep 1; done
+      echo "Verdaccio is up — publishing attacker package..."
+      npm set registry http://verdaccio:4873/
+      echo "registry=http://verdaccio:4873/" > ~/.npmrc
+      cd /attacker
+      npm publish --registry http://verdaccio:4873/ || true
+      echo "publish finished"
+      sleep 2
 
   # This is the vulnerable application's build container.
-  # It will run the build process and fall victim to the attack.
   vulnerable-builder:
     build:
       context: ./victim-app
       dockerfile: Dockerfile
     container_name: vulnerable-builder
     depends_on:
-      verdaccio:
-        condition: service_healthy
-      # we depend on publisher so compose tries to start it first
+      - verdaccio
       - publisher
-    # keep the container alive so you can inspect logs and exec into it
     command: ["tail", "-f", "/dev/null"]
